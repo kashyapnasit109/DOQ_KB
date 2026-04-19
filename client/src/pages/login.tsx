@@ -4,8 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
-import { LogIn, UserPlus, Building2 } from "lucide-react";
+import { LogIn, UserPlus, ShieldAlert, Cpu } from "lucide-react";
 
 interface User {
   id: number;
@@ -22,6 +21,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<"select" | "register">("select");
   const [selectedUser, setSelectedUser] = useState<string>("");
 
+  // Register form
   const [regUsername, setRegUsername] = useState("");
   const [regDisplayName, setRegDisplayName] = useState("");
   const [regRole, setRegRole] = useState<string>("engineer");
@@ -37,7 +37,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const res = await apiRequest("POST", "/api/auth/login", { username });
       return res.json();
     },
-    onSuccess: (user: User) => onLogin(user),
+    onSuccess: (user: User) => {
+      onLogin(user);
+    },
   });
 
   const registerMutation = useMutation({
@@ -53,7 +55,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/users"] });
       onLogin(user);
     },
-    onError: (err: Error) => setRegError(err.message),
+    onError: (err: Error) => {
+      setRegError(err.message);
+    },
   });
 
   const handleLogin = () => {
@@ -73,239 +77,211 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center login-gradient p-4 relative overflow-hidden">
-      {/* Ambient background effects */}
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#0A0A0A]">
+      {/* Immersive Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-[#14d9c5]/5 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full bg-[#d4a853]/5 blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-[#0f9580]/3 blur-2xl" />
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#1F6B38]/10 rounded-full blur-[120px] mix-blend-screen mix-blend-lighten" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#4A8F96]/10 rounded-full blur-[100px] mix-blend-screen mix-blend-lighten" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,#0A0A0A_100%)] z-0" />
       </div>
 
-      <div className="w-full max-w-[420px] space-y-8 relative z-10">
-        {/* ─── Premium Logo Header ─── */}
-        <div className="text-center space-y-4">
-          <div className="relative mx-auto w-24 h-24">
-            <img
-              src="/logo.png"
-              alt="Kashyap Builders"
-              className="w-full h-full object-contain drop-shadow-2xl"
-            />
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#14d9c5]/10 to-transparent pointer-events-none" />
-          </div>
+      {/* Grid Pattern */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGgyNHYyNEgwem0xIDFhMSAxIDAgMSAwIDAgMiAxIDEgMCAwIDAgMC0yeiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjAyKSIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+')] opacity-50 z-0 mix-blend-overlay" />
 
-          <div className="space-y-1.5">
-            <h1 className="text-[26px] font-bold tracking-[-0.03em] text-foreground" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
-              DocQ
+      <div className="w-full max-w-md space-y-8 z-10 p-6">
+        {/* Branding Area */}
+        <div className="flex flex-col items-center">
+          <div className="mb-8 p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl relative group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#1F6B38]/20 to-[#4A8F96]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl blur-xl" />
+            <img
+              src="/logo-text.png"
+              alt="Kashyap Builders"
+              className="w-full max-w-[280px] h-auto object-contain relative z-10"
+            />
+          </div>
+          
+          <div className="space-y-1.5 text-center">
+            <h1 className="text-3xl font-light tracking-widest text-white/90">
+              SMART<span className="font-bold text-white">OS</span>
             </h1>
-            <p className="text-[13px] text-muted-foreground tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>
-              Site Intelligence System
+            <p className="text-sm font-medium tracking-[0.2em] text-[#4A8F96] uppercase">
+              Site Intelligence Platform
             </p>
-            <div className="flex items-center justify-center gap-2 pt-1">
-              <div className="h-[1px] w-6 bg-gradient-to-r from-transparent to-[#14d9c5]/40" />
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase"
-                 style={{ 
-                   background: 'linear-gradient(135deg, #14d9c5, #d4a853)',
-                   WebkitBackgroundClip: 'text',
-                   WebkitTextFillColor: 'transparent',
-                   fontFamily: "'Space Grotesk', sans-serif"
-                 }}>
-                Kashyap Builders
-              </p>
-              <div className="h-[1px] w-6 bg-gradient-to-l from-transparent to-[#d4a853]/40" />
-            </div>
           </div>
         </div>
 
-        {/* ─── Auth Card ─── */}
-        <Card className="p-6 shadow-xl border-border/40 backdrop-blur-sm bg-card/95">
+        {/* Auth Container */}
+        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+          {/* Subtle line at top of card */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#1F6B38]/50 to-transparent" />
+          
           {mode === "select" ? (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-[15px] font-semibold tracking-tight">Welcome back</h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select your profile to continue
-                </p>
+                <h2 className="text-lg font-medium text-white/80">System Access</h2>
+                <p className="text-sm text-white/40 mt-1 font-light">Identify yourself to access the platform</p>
               </div>
 
               {users.length > 0 ? (
-                <>
-                  <div>
-                    <Label className="text-xs mb-1.5 block font-medium">Your Profile</Label>
-                    <select
-                      value={selectedUser}
-                      onChange={(e) => setSelectedUser(e.target.value)}
-                      className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#14d9c5]/30 focus:border-[#14d9c5]/50 transition-all"
-                      data-testid="select-login-user"
-                    >
-                      <option value="">Choose your name...</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.username}>
-                          {u.displayName} ({u.role})
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-white/50 block ml-1">Select Identity</Label>
+                    <div className="relative">
+                      <select
+                        value={selectedUser}
+                        onChange={(e) => setSelectedUser(e.target.value)}
+                        className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#4A8F96]/50 focus:border-transparent transition-all"
+                      >
+                        <option value="" className="bg-[#0A0A0A]">Select personnel...</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.username} className="bg-[#0A0A0A]">
+                            {u.displayName} — {u.role.toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                        <Cpu className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
 
                   <Button
                     onClick={handleLogin}
                     disabled={!selectedUser || loginMutation.isPending}
-                    className="w-full bg-gradient-to-r from-[#0f9580] to-[#14d9c5] hover:from-[#0d856f] hover:to-[#12c4b1] text-white shadow-lg shadow-[#14d9c5]/10 transition-all duration-200"
-                    data-testid="button-login"
+                    className="w-full bg-[#1F6B38] hover:bg-[#155328] text-white shadow-[0_0_20px_rgba(31,107,56,0.2)] hover:shadow-[0_0_30px_rgba(31,107,56,0.4)] transition-all h-12 rounded-xl border border-white/10"
                   >
                     <LogIn className="w-4 h-4 mr-2" />
-                    {loginMutation.isPending ? "Signing in..." : "Continue"}
+                    {loginMutation.isPending ? "AUTHENTICATING..." : "INITIATE LINK"}
                   </Button>
 
                   {loginMutation.isError && (
-                    <p className="text-xs text-destructive text-center">
+                    <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg border border-red-400/20">
                       {(loginMutation.error as Error).message}
                     </p>
                   )}
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-border/60" />
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-                      <span className="bg-card px-3 text-muted-foreground">or</span>
-                    </div>
+                  <div className="flex items-center gap-4 py-2">
+                    <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-white/10" />
+                    <span className="text-[10px] uppercase tracking-widest text-white/30">unregistered?</span>
+                    <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-white/10" />
                   </div>
-                </>
+                </div>
               ) : (
-                <div className="text-center py-5">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-[#14d9c5]/10 flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-[#14d9c5]" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    No team members registered yet
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Create your profile to get started
+                <div className="text-center py-8 px-4 bg-white/5 rounded-xl border border-white/5">
+                  <ShieldAlert className="w-12 h-12 text-[#4A8F96]/50 mx-auto mb-3" />
+                  <p className="text-sm text-white/60 font-light">
+                    No active personnel found in the database.
                   </p>
                 </div>
               )}
 
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => setMode("register")}
-                className="w-full border-dashed hover:border-[#14d9c5]/40 hover:bg-[#14d9c5]/5 transition-all"
-                data-testid="button-go-register"
+                className="w-full hover:bg-white/5 text-white/60 hover:text-white transition-colors h-12 rounded-xl"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Create New Profile
+                Register New Profile
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="text-center">
-                <h2 className="text-[15px] font-semibold tracking-tight">Create Profile</h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  One-time setup — use your username to log in anytime
-                </p>
+            <form onSubmit={handleRegister} className="space-y-5">
+              <div className="text-center mb-6">
+                <h2 className="text-lg font-medium text-white/80">Personnel Registration</h2>
+                <p className="text-sm text-white/40 mt-1 font-light">Enter credentials for secure platform access</p>
               </div>
 
-              <div>
-                <Label htmlFor="reg-username" className="text-xs font-medium">
-                  Username <span className="text-[#14d9c5]">*</span>
-                </Label>
-                <Input
-                  id="reg-username"
-                  placeholder="e.g. vraj, kishan01"
-                  value={regUsername}
-                  onChange={(e) => { setRegUsername(e.target.value.toLowerCase().replace(/\s/g, "")); setRegError(""); }}
-                  className="mt-1.5 focus:ring-2 focus:ring-[#14d9c5]/30 focus:border-[#14d9c5]/50"
-                  required
-                  data-testid="input-reg-username"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Lowercase, no spaces. This is your login ID.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="reg-name" className="text-xs font-medium">
-                  Full Name <span className="text-[#14d9c5]">*</span>
-                </Label>
-                <Input
-                  id="reg-name"
-                  placeholder="e.g. Vraj Patel"
-                  value={regDisplayName}
-                  onChange={(e) => setRegDisplayName(e.target.value)}
-                  className="mt-1.5 focus:ring-2 focus:ring-[#14d9c5]/30 focus:border-[#14d9c5]/50"
-                  required
-                  data-testid="input-reg-name"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="reg-role" className="text-xs font-medium">Role</Label>
-                <select
-                  id="reg-role"
-                  value={regRole}
-                  onChange={(e) => setRegRole(e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#14d9c5]/30 focus:border-[#14d9c5]/50 transition-all"
-                  data-testid="select-reg-role"
-                >
-                  <option value="engineer">Site Engineer</option>
-                  <option value="supervisor">Site Supervisor</option>
-                  <option value="admin">Admin / Manager</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              {regRole === "admin" && (
-                <div>
-                  <Label htmlFor="reg-pin" className="text-xs font-medium">
-                    Admin PIN <span className="text-muted-foreground">(4+ digits)</span>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reg-username" className="text-xs uppercase tracking-wider text-white/50 block ml-1">
+                    System ID <span className="text-[#4A8F96]">*</span>
                   </Label>
                   <Input
-                    id="reg-pin"
-                    type="password"
-                    placeholder="e.g. 1234"
-                    value={regPin}
-                    onChange={(e) => setRegPin(e.target.value)}
-                    className="mt-1.5 focus:ring-2 focus:ring-[#14d9c5]/30"
-                    data-testid="input-reg-pin"
+                    id="reg-username"
+                    placeholder="e.g. jdoe01"
+                    value={regUsername}
+                    onChange={(e) => { setRegUsername(e.target.value.toLowerCase().replace(/\s/g, "")); setRegError(""); }}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-[#4A8F96] rounded-xl"
+                    required
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Used to access admin settings like API key config.
-                  </p>
                 </div>
-              )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-name" className="text-xs uppercase tracking-wider text-white/50 block ml-1">
+                    Full Name <span className="text-[#4A8F96]">*</span>
+                  </Label>
+                  <Input
+                    id="reg-name"
+                    placeholder="e.g. John Doe"
+                    value={regDisplayName}
+                    onChange={(e) => setRegDisplayName(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-[#4A8F96] rounded-xl"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-role" className="text-xs uppercase tracking-wider text-white/50 block ml-1">Role Designation</Label>
+                  <select
+                    id="reg-role"
+                    value={regRole}
+                    onChange={(e) => setRegRole(e.target.value)}
+                    className="w-full appearance-none h-12 bg-white/5 border border-white/10 text-white rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-[#4A8F96] transition-all"
+                  >
+                    <option value="engineer" className="bg-[#0A0A0A]">Site Engineer</option>
+                    <option value="supervisor" className="bg-[#0A0A0A]">Site Supervisor</option>
+                    <option value="admin" className="bg-[#0A0A0A]">Admin / Commander</option>
+                    <option value="other" className="bg-[#0A0A0A]">Other</option>
+                  </select>
+                </div>
+
+                {regRole === "admin" && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label htmlFor="reg-pin" className="text-xs uppercase tracking-wider text-[#4A8F96] block ml-1 flex items-center gap-2">
+                      <ShieldAlert className="w-3 h-3" /> Security PIN
+                    </Label>
+                    <Input
+                      id="reg-pin"
+                      type="password"
+                      placeholder="Enter 4+ digit PIN"
+                      value={regPin}
+                      onChange={(e) => setRegPin(e.target.value)}
+                      className="h-12 bg-[#4A8F96]/10 border-[#4A8F96]/30 text-[#4A8F96] placeholder:text-[#4A8F96]/30 focus-visible:ring-[#4A8F96] rounded-xl"
+                    />
+                  </div>
+                )}
+              </div>
 
               {regError && (
-                <p className="text-xs text-destructive">{regError}</p>
+                <p className="text-sm text-red-400 text-center bg-red-400/10 py-2 rounded-lg border border-red-400/20">
+                  {regError}
+                </p>
               )}
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setMode("select")}
-                  className="flex-1"
+                  className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 text-white/70"
                 >
-                  Back
+                  Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={!regUsername || !regDisplayName || registerMutation.isPending}
-                  className="flex-1 bg-gradient-to-r from-[#0f9580] to-[#14d9c5] hover:from-[#0d856f] hover:to-[#12c4b1] text-white"
-                  data-testid="button-register"
+                  className="flex-[2] h-12 rounded-xl bg-[#4A8F96] hover:bg-[#3B7A81] text-white shadow-[0_0_20px_rgba(74,143,150,0.2)] hover:shadow-[0_0_30px_rgba(74,143,150,0.4)] transition-all border border-white/10"
                 >
-                  {registerMutation.isPending ? "Creating..." : "Create & Login"}
+                  {registerMutation.isPending ? "REGISTERING..." : "REGISTER & LINK"}
                 </Button>
               </div>
             </form>
           )}
-        </Card>
+        </div>
 
-        {/* ─── Footer ─── */}
-        <div className="text-center space-y-1">
-          <p className="text-[10px] text-muted-foreground/60 tracking-wide">
-            Powered by GPT-4o Vision
-          </p>
-          <p className="text-[9px] text-muted-foreground/40 tracking-wider uppercase">
-            Government Infrastructure Intelligence
+        <div className="text-center mt-8">
+          <p className="text-[10px] tracking-widest text-white/30 uppercase font-mono">
+            SECURE CONNECTION • ENCRYPTED
           </p>
         </div>
       </div>
