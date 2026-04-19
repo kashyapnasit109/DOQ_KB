@@ -376,7 +376,7 @@ export async function processAndStoreDocument(
 
   // Step 2: Extract structured data via Vision API
   console.log("[PDF Processor] Sending to GPT-4o Vision API...");
-  const site = storage.getSite(siteId);
+  const site = await storage.getSite(siteId);
   const additionalContext = site 
     ? `This report is from site: ${site.name} (${site.code}), date: ${reportDate}` 
     : undefined;
@@ -385,24 +385,24 @@ export async function processAndStoreDocument(
   console.log("[PDF Processor] Received structured data from AI");
 
   // Step 3: Create daily report record
-  const report = storage.createDailyReport({
+  const report = await storage.createDailyReport({
     documentId: docId,
     siteId: siteId,
     reportDate: reportDate,
     reportedBy: structured.metadata?.reported_by || null,
     structuredData: JSON.stringify(structured),
-    rawExtraction: JSON.stringify(structured), // We can also store the raw text separately
+    rawExtraction: JSON.stringify(structured),
     createdAt: new Date().toISOString(),
   });
   console.log(`[PDF Processor] Created daily report ${report.id}`);
 
   // Step 4: Store individual records in respective tables
-  storeStructuredData(report.id, structured);
+  await storeStructuredData(report.id, structured);
   console.log("[PDF Processor] Stored all structured records");
 
   // Step 5: Update document status
   const summaryText = buildTextSummary(structured, reportDate);
-  storage.updateDocument(docId, {
+  await storage.updateDocument(docId, {
     status: "ready",
     pageCount: images.length,
     extractedText: summaryText,
@@ -418,15 +418,13 @@ export async function processAndStoreDocument(
 /**
  * Store the parsed structured data into individual database tables
  */
-function storeStructuredData(reportId: number, data: ParsedReport): void {
+async function storeStructuredData(reportId: number, data: ParsedReport): Promise<void> {
   // Equipment Usage
   if (data.equipment_usage) {
     for (const equip of data.equipment_usage) {
-      storage.createEquipmentUsage({
-        reportId,
-        equipment: equip.equipment,
-        workingHours: equip.working_hours,
-        dieselUsed: equip.diesel_used || "Nil",
+      await storage.createEquipmentUsage({
+        reportId, equipment: equip.equipment,
+        workingHours: equip.working_hours, dieselUsed: equip.diesel_used || "Nil",
         remarks: equip.remarks || null,
       });
     }
@@ -435,29 +433,21 @@ function storeStructuredData(reportId: number, data: ParsedReport): void {
   // Material Usage
   if (data.material_usage) {
     for (const mat of data.material_usage) {
-      storage.createMaterialUsage({
-        reportId,
-        material: mat.material,
-        quantityUsed: mat.quantity_used,
-        unit: mat.unit || "",
-        balance: mat.balance,
-        remarks: mat.remarks || null,
+      await storage.createMaterialUsage({
+        reportId, material: mat.material,
+        quantityUsed: mat.quantity_used, unit: mat.unit || "",
+        balance: mat.balance, remarks: mat.remarks || null,
       });
     }
   }
 
-  // Centering Work → stored as labour records with category "centering"
+  // Centering Work
   if (data.centering_work) {
     for (const cw of data.centering_work) {
-      storage.createLabourRecord({
-        reportId,
-        category: "centering",
-        workDescription: cw.work_type,
-        location: null,
-        mistriCount: cw.mistri_count || 0,
-        helperCount: cw.helper_count || 0,
-        totalLabour: (cw.mistri_count || 0) + (cw.helper_count || 0),
-        remarks: cw.remarks || null,
+      await storage.createLabourRecord({
+        reportId, category: "centering", workDescription: cw.work_type,
+        location: null, mistriCount: cw.mistri_count || 0, helperCount: cw.helper_count || 0,
+        totalLabour: (cw.mistri_count || 0) + (cw.helper_count || 0), remarks: cw.remarks || null,
       });
     }
   }
@@ -465,30 +455,17 @@ function storeStructuredData(reportId: number, data: ParsedReport): void {
   // Department Labour
   if (data.department_labour) {
     for (const task of data.department_labour.tasks || []) {
-      storage.createLabourRecord({
-        reportId,
-        category: "department",
-        workDescription: task,
-        location: null,
-        mistriCount: 0,
-        helperCount: 0,
-        totalLabour: 0,
-        remarks: null,
+      await storage.createLabourRecord({
+        reportId, category: "department", workDescription: task,
+        location: null, mistriCount: 0, helperCount: 0, totalLabour: 0, remarks: null,
       });
     }
-    // Also store the total
     if (data.department_labour.total_labour > 0) {
-      storage.createLabourRecord({
-        reportId,
-        category: "department_total",
-        workDescription: `Total department labour`,
-        location: null,
-        mistriCount: 0,
-        helperCount: 0,
-        totalLabour: data.department_labour.total_labour,
-        remarks: data.department_labour.curing_labour > 0
-          ? `${data.department_labour.curing_labour} for curing`
-          : null,
+      await storage.createLabourRecord({
+        reportId, category: "department_total",
+        workDescription: `Total department labour`, location: null,
+        mistriCount: 0, helperCount: 0, totalLabour: data.department_labour.total_labour,
+        remarks: data.department_labour.curing_labour > 0 ? `${data.department_labour.curing_labour} for curing` : null,
       });
     }
   }
@@ -497,27 +474,18 @@ function storeStructuredData(reportId: number, data: ParsedReport): void {
   if (data.masonry_rokdi) {
     const rokdi = data.masonry_rokdi;
     for (const loc of rokdi.breakdown || []) {
-      storage.createLabourRecord({
-        reportId,
-        category: "masonry",
-        workDescription: "Rokdi",
-        location: loc.location,
-        mistriCount: loc.mistri || 0,
-        helperCount: loc.helper || 0,
-        totalLabour: (loc.mistri || 0) + (loc.helper || 0),
-        remarks: null,
+      await storage.createLabourRecord({
+        reportId, category: "masonry", workDescription: "Rokdi",
+        location: loc.location, mistriCount: loc.mistri || 0, helperCount: loc.helper || 0,
+        totalLabour: (loc.mistri || 0) + (loc.helper || 0), remarks: null,
       });
     }
-    // Store payment for masonry
     if (rokdi.total_payment) {
-      storage.createPaymentRecord({
-        reportId,
-        category: "masonry_rokdi",
+      await storage.createPaymentRecord({
+        reportId, category: "masonry_rokdi",
         description: `Rokdi work - ${rokdi.total_mistri} mistri, ${rokdi.total_helper} helper`,
-        person: null,
-        amount: rokdi.total_payment,
-        paymentDate: rokdi.payment_for_dates || null,
-        remarks: null,
+        person: null, amount: rokdi.total_payment,
+        paymentDate: rokdi.payment_for_dates || null, remarks: null,
       });
     }
   }
@@ -525,14 +493,10 @@ function storeStructuredData(reportId: number, data: ParsedReport): void {
   // Individual Payments
   if (data.individual_payments) {
     for (const pay of data.individual_payments) {
-      storage.createPaymentRecord({
-        reportId,
-        category: pay.category || "individual",
-        description: pay.category,
-        person: pay.person || null,
-        amount: pay.amount,
-        paymentDate: null,
-        remarks: pay.remarks || null,
+      await storage.createPaymentRecord({
+        reportId, category: pay.category || "individual",
+        description: pay.category, person: pay.person || null,
+        amount: pay.amount, paymentDate: null, remarks: pay.remarks || null,
       });
     }
   }
@@ -540,31 +504,21 @@ function storeStructuredData(reportId: number, data: ParsedReport): void {
   // Plumbing
   if (data.plumbing) {
     for (const plumb of data.plumbing) {
-      storage.createLabourRecord({
-        reportId,
-        category: "plumbing",
-        workDescription: "Plumbing work",
-        location: plumb.location,
-        mistriCount: 0,
-        helperCount: 0,
-        totalLabour: 1,
-        remarks: plumb.person || null,
+      await storage.createLabourRecord({
+        reportId, category: "plumbing", workDescription: "Plumbing work",
+        location: plumb.location, mistriCount: 0, helperCount: 0,
+        totalLabour: 1, remarks: plumb.person || null,
       });
     }
   }
 
-  // Other entries — store as generic labour records
+  // Other entries
   if (data.other_entries) {
     for (const entry of data.other_entries) {
-      storage.createLabourRecord({
-        reportId,
-        category: "other",
-        workDescription: entry.description,
-        location: null,
-        mistriCount: 0,
-        helperCount: 0,
-        totalLabour: 0,
-        remarks: entry.details || null,
+      await storage.createLabourRecord({
+        reportId, category: "other", workDescription: entry.description,
+        location: null, mistriCount: 0, helperCount: 0,
+        totalLabour: 0, remarks: entry.details || null,
       });
     }
   }
