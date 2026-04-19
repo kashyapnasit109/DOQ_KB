@@ -19,7 +19,10 @@ const upload = multer({
   },
 });
 
-// Ensure uploads directory exists - moved to inside registerRoutes to prevent top-level boot crashes
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 async function getApiKey(): Promise<string | undefined> {
   return process.env.OPENAI_API_KEY || await storage.getSetting("openai_api_key");
@@ -30,15 +33,6 @@ async function getAdminPin(): Promise<string> {
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-
-  // Dynamically ensure uploads directory so Vercel does not crash on module imported
-  if (!fs.existsSync(uploadDir)) {
-    try {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    } catch (e) {
-      console.warn("Failed to create uploadDir:", e);
-    }
-  }
 
   // Initialize database
   await storage.ensureInit();
