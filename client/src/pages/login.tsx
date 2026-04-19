@@ -94,9 +94,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </div>
 
           <div className="space-y-1.5 pt-2">
-            <h1 className="text-[26px] font-bold tracking-[-0.03em] text-foreground" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
-              DocQ
-            </h1>
             <div className="flex items-center justify-center gap-2 pt-1">
               <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#14d9c5]/40" />
               <p className="text-[12px] text-muted-foreground tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>

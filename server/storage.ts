@@ -45,113 +45,145 @@ let initialized = false;
 async function initializeDatabase() {
   if (initialized) return;
 
-  await client.executeMultiple(`
-    CREATE TABLE IF NOT EXISTS documents (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      page_count INTEGER NOT NULL DEFAULT 0,
-      extracted_text TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'processing',
-      error_message TEXT,
-      uploaded_at TEXT NOT NULL,
-      site_id INTEGER,
-      report_date TEXT,
-      file_type TEXT DEFAULT 'pdf',
-      uploaded_by TEXT
-    );
+  try {
+    // Check if the users table exists already
+    const res = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    if (res.rows && res.rows.length > 0) {
+      initialized = true;
+      return;
+    }
 
-    CREATE TABLE IF NOT EXISTS conversations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      question TEXT NOT NULL,
-      answer TEXT NOT NULL,
-      source_docs TEXT NOT NULL DEFAULT '[]',
-      created_at TEXT NOT NULL
-    );
+    console.log("Database tables missing, running initialization...");
+    
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        page_count INTEGER NOT NULL DEFAULT 0,
+        extracted_text TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'processing',
+        error_message TEXT,
+        uploaded_at TEXT NOT NULL,
+        site_id INTEGER,
+        report_date TEXT,
+        file_type TEXT DEFAULT 'pdf',
+        uploaded_by TEXT
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS settings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      key TEXT NOT NULL UNIQUE,
-      value TEXT NOT NULL
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        source_docs TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      display_name TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'engineer',
-      pin TEXT,
-      created_at TEXT NOT NULL
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT NOT NULL UNIQUE,
+        value TEXT NOT NULL
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS sites (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      code TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      location TEXT,
-      created_at TEXT NOT NULL
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        display_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'engineer',
+        pin TEXT,
+        created_at TEXT NOT NULL
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS daily_reports (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      document_id INTEGER NOT NULL,
-      site_id INTEGER NOT NULL,
-      report_date TEXT NOT NULL,
-      raw_extraction TEXT,
-      structured_data TEXT,
-      summary TEXT,
-      reported_by TEXT,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (document_id) REFERENCES documents(id),
-      FOREIGN KEY (site_id) REFERENCES sites(id)
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS sites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        location TEXT,
+        created_at TEXT NOT NULL
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS equipment_usage (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      report_id INTEGER NOT NULL,
-      equipment TEXT NOT NULL,
-      hours_worked REAL,
-      diesel_litres REAL,
-      remarks TEXT,
-      FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS daily_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER NOT NULL,
+        site_id INTEGER NOT NULL,
+        report_date TEXT NOT NULL,
+        raw_extraction TEXT,
+        structured_data TEXT,
+        summary TEXT,
+        reported_by TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (document_id) REFERENCES documents(id),
+        FOREIGN KEY (site_id) REFERENCES sites(id)
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS material_usage (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      report_id INTEGER NOT NULL,
-      material TEXT NOT NULL,
-      quantity_used REAL,
-      unit TEXT,
-      balance REAL,
-      remarks TEXT,
-      FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS equipment_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_id INTEGER NOT NULL,
+        equipment TEXT NOT NULL,
+        hours_worked REAL,
+        diesel_litres REAL,
+        remarks TEXT,
+        FOREIGN KEY (report_id) REFERENCES daily_reports(id)
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS labour_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      report_id INTEGER NOT NULL,
-      category TEXT NOT NULL,
-      description TEXT,
-      mistri_count INTEGER,
-      helper_count INTEGER,
-      labour_count INTEGER,
-      remarks TEXT,
-      FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS material_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_id INTEGER NOT NULL,
+        material TEXT NOT NULL,
+        quantity_used REAL,
+        unit TEXT,
+        balance REAL,
+        remarks TEXT,
+        FOREIGN KEY (report_id) REFERENCES daily_reports(id)
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS payment_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      report_id INTEGER NOT NULL,
-      category TEXT NOT NULL,
-      description TEXT,
-      person TEXT,
-      amount REAL,
-      payment_date TEXT,
-      remarks TEXT,
-      FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
-  `);
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS labour_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT,
+        mistri_count INTEGER,
+        helper_count INTEGER,
+        labour_count INTEGER,
+        remarks TEXT,
+        FOREIGN KEY (report_id) REFERENCES daily_reports(id)
+      );
+    `);
 
-  initialized = true;
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS payment_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        report_id INTEGER NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT,
+        person TEXT,
+        amount REAL,
+        payment_date TEXT,
+        remarks TEXT,
+        FOREIGN KEY (report_id) REFERENCES daily_reports(id)
+      );
+    `);
+
+    initialized = true;
+  } catch (err) {
+    console.error("Failed to initialize database schema entirely:", err);
+    // Don't throw so we don't crash Vercel, just let subsequent queries fail or be logged
+  }
 }
 
 // ─── Storage Class (all async) ──────────────────────────────────────────────
