@@ -49,7 +49,9 @@ function getDbInstance() {
   return { client: _client, db: _db };
 }
 
-async function initializeDatabase() {
+let initialized = false;
+
+async function initializeDatabase(client: any) {
   if (initialized) return;
 
   await client.executeMultiple(`
