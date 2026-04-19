@@ -15,7 +15,8 @@ import { createClient } from "@libsql/client";
 import { eq, desc, and, like, sql } from "drizzle-orm";
 
 // ─── Database Connection ────────────────────────────────────────────────────
-// Uses Turso (cloud) if TURSO_DATABASE_URL is set, otherwise local SQLite file.
+// Determine the SQLite file path: /tmp on Vercel (read-only fs), data.db locally
+const localDbPath = process.env.VERCEL ? "file:/tmp/data.db" : "file:data.db";
 
 const client = createClient(
   process.env.TURSO_DATABASE_URL
@@ -24,7 +25,7 @@ const client = createClient(
         authToken: process.env.TURSO_AUTH_TOKEN,
       }
     : {
-        url: "file:data.db",
+        url: localDbPath,
       }
 );
 

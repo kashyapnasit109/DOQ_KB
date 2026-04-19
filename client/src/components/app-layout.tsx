@@ -24,11 +24,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <img
               src="/logo.png"
               alt="Kashyap Builders"
-              className="w-8 h-8 rounded-lg object-contain shrink-0"
+              className="w-9 h-9 rounded-lg object-contain shrink-0 drop-shadow-md"
             />
             <div className="min-w-0">
-              <span className="text-base font-semibold tracking-tight block">DocQ</span>
-              <span className="text-[9px] text-muted-foreground leading-none">Kashyap Builders</span>
+              <span className="text-[15px] font-bold tracking-tight block" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>DocQ</span>
+              <span className="text-[8px] font-semibold tracking-[0.15em] uppercase leading-none"
+                    style={{
+                      background: 'linear-gradient(135deg, #14d9c5, #d4a853)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      fontFamily: "'Space Grotesk', sans-serif"
+                    }}>
+                Kashyap Builders
+              </span>
             </div>
           </div>
         </div>
