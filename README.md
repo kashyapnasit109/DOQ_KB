@@ -1,179 +1,105 @@
-# DocQ — Construction Site Intelligence System
+# DocQ — Document Intelligence
 
-> AI-powered platform for parsing handwritten daily construction reports and enabling intelligent querying of site data.
+Upload handwritten PDF documents and ask questions about their content using AI. Documents persist so you can query historical uploads at any time.
 
-**Built for:** Kashyap Builders & Developers  
-**Domain:** Government Construction Infrastructure
+## Features
 
----
+- **PDF Upload** — Drag-and-drop or click to upload handwritten/typed PDF documents (up to 50 MB)
+- **Text Extraction** — Automatic text extraction from uploaded PDFs using `pdfjs-dist`
+- **AI-Powered Q&A** — Ask natural language questions across all your documents, powered by OpenAI (`gpt-4o-mini`)
+- **Document Library** — Browse, search, and manage all uploaded documents with page-level detail
+- **Conversation History** — Chat history is preserved so you can revisit past questions and answers
+- **Dark Mode** — Full light/dark theme support
+- **Settings** — Configure your OpenAI API key directly in the app
 
-## 🏗️ What It Does
+## Tech Stack
 
-1. **Upload handwritten daily reports** (PDF or photos) from construction sites
-2. **GPT-4o Vision AI** reads and parses handwritten text into structured data
-3. **Stores everything** in organized database tables (equipment, materials, labour, payments)
-4. **Smart chatbot** answers questions like "How many cement bags were used at SOU on April 8?"
-5. **Multi-site management** with code-based site naming to prevent inconsistencies
+| Layer      | Technology                                      |
+| ---------- | ----------------------------------------------- |
+| Frontend   | React, Tailwind CSS, shadcn/ui, Wouter          |
+| Backend    | Express, Node.js                                |
+| Database   | SQLite (better-sqlite3) + Drizzle ORM           |
+| PDF        | pdfjs-dist (legacy build)                       |
+| AI         | OpenAI API (gpt-4o-mini)                        |
+| Build      | Vite (client) + esbuild (server)                |
+| Font       | Satoshi (Fontshare CDN)                         |
 
-## 🖥️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18 + TypeScript + Vite |
-| **Backend** | Express.js + Node.js |
-| **Database** | SQLite (via Drizzle ORM + better-sqlite3) |
-| **AI Engine** | OpenAI GPT-4o Vision API |
-| **UI Components** | shadcn/ui + Radix UI |
-| **PDF Processing** | @napi-rs/canvas + pdfjs-dist |
-
-## 📊 Database Schema
-
-```
-sites ─────────────► daily_reports ─────► equipment_usage
-  │                    │                  material_usage
-  │                    │                  labour_records
-  │                    │                  payment_records
-  │                    │
-  └── documents ◄──────┘
-  
-users (persistent profiles with role-based access)
-```
-
-**9 tables:** users, documents, conversations, settings, sites, daily_reports, equipment_usage, material_usage, labour_records, payment_records
-
-## 🚀 Quick Start
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- OpenAI API key with GPT-4o access
 
-### Setup
+- Node.js 18+
+- An OpenAI API key
+
+### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/docqa.git
-cd docqa
-
-# Install dependencies
 npm install
+```
 
-# Configure API key (choose one method):
+### Development
 
-# Method 1: Environment variable (recommended for production)
-cp .env.example .env
-# Edit .env and set your OPENAI_API_KEY
-
-# Method 2: Via admin panel in the UI
-# Register as admin → Settings → Enter API key
-
-# Start the development server
+```bash
 npm run dev
 ```
 
-The app will be available at **http://localhost:5000**
+The dev server starts Express (backend) and Vite (frontend) on the same port.
 
-### First-Time Setup
+### Production
 
-1. Open `http://localhost:5000`
-2. **Register** — Enter your username, name, and role
-3. **If Admin:** Go to Settings → Enter your PIN → Set the OpenAI API key  
-4. **If Engineer:** Just start uploading reports — the API key is managed centrally
+```bash
+npm run build
+NODE_ENV=production node dist/index.cjs
+```
 
-## 👥 User Roles
+### Database
 
-| Role | Capabilities |
-|------|-------------|
-| **Admin** | Configure API key, manage PIN, upload reports, view data, use chatbot |
-| **Engineer** | Upload reports, view all site data, use chatbot |
-| **Supervisor** | Upload reports, view all site data, use chatbot |
+The app uses SQLite with Drizzle ORM. To initialize or update the database schema:
 
-- Profiles are stored **server-side** — register once, login by username anytime
-- **Everyone** can see all sites' data (designed for remote monitoring)
-- **Only admins** can access the API key configuration panel
+```bash
+npx drizzle-kit push
+```
 
-## 📋 Features
+### Configuration
 
-### Upload & Parse
-- Drag-and-drop PDF or photo upload
-- Select construction site from dropdown (auto-suggest with site codes)
-- GPT-4o Vision reads handwritten text and extracts structured data
-- Parsed data displayed in organized sections (equipment, materials, labour, payments)
+1. Open the app and navigate to **Settings**
+2. Enter your OpenAI API key
+3. The key is stored securely in the local SQLite database
 
-### Site Management
-- Create sites with unique codes (SOU, METRO-AHD, etc.)
-- Search/autocomplete prevents naming inconsistencies
-- All team members select from the same site list
-
-### Smart Chatbot
-- Ask natural language questions about any site's data
-- Cross-site and cross-date queries supported
-- Precise numerical answers with ₹ formatting
-- Examples:
-  - "How many cement bags were used at SOU on April 8?"
-  - "What was the total payment for Rokdi workers this week?"
-  - "Compare equipment hours across all sites"
-
-### Centralized Configuration
-- API key managed by admin — engineers never see it
-- Set via `.env` file (production) or admin panel (development)
-- PIN-protected admin settings
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 docqa/
 ├── client/               # React frontend
-│   └── src/
-│       ├── components/   # UI components (site-selector, app-layout)
-│       ├── hooks/        # Custom hooks (use-profile)
-│       ├── pages/        # Page components (chat, documents, settings, login)
-│       └── lib/          # Utilities
+│   ├── src/
+│   │   ├── components/   # Shared UI components
+│   │   ├── pages/        # Route pages (Chat, Documents, Settings)
+│   │   ├── lib/          # Utilities, query client, theme
+│   │   └── hooks/        # Custom React hooks
+│   └── index.html
 ├── server/               # Express backend
-│   ├── index.ts          # Server entry point
 │   ├── routes.ts         # API endpoints
-│   ├── storage.ts        # Database layer (Drizzle ORM)
-│   └── pdf-processor.ts  # GPT-4o Vision API pipeline
+│   ├── storage.ts        # Database operations
+│   └── index.ts          # Server entry
 ├── shared/
-│   └── schema.ts         # Database schema (9 tables)
-├── .env.example          # Environment template
-└── package.json
+│   └── schema.ts         # Drizzle ORM schema + Zod validation
+└── uploads/              # Uploaded PDF files
 ```
 
-## 🔌 API Endpoints
+## API Endpoints
 
-### Auth
-- `POST /api/auth/register` — Register new user
-- `POST /api/auth/login` — Login by username
-- `GET /api/auth/users` — List all users
-- `POST /api/auth/update-pin` — Update admin PIN
+| Method | Endpoint                  | Description                    |
+| ------ | ------------------------- | ------------------------------ |
+| GET    | `/api/documents`          | List all documents             |
+| GET    | `/api/documents/:id`      | Get document with pages        |
+| POST   | `/api/documents/upload`   | Upload a PDF document          |
+| DELETE | `/api/documents/:id`      | Delete a document              |
+| GET    | `/api/conversations`      | List conversations             |
+| POST   | `/api/conversations`      | Create a conversation          |
+| POST   | `/api/ask`                | Ask a question (AI-powered)    |
+| GET    | `/api/settings`           | Get app settings               |
+| PUT    | `/api/settings`           | Update settings (API key)      |
 
-### Sites
-- `GET /api/sites` — List all sites
-- `GET /api/sites/search?q=` — Search sites
-- `POST /api/sites` — Create site
-- `GET /api/sites/:id` — Get site with summary
+## License
 
-### Documents
-- `POST /api/documents` — Upload report (multipart: file + siteId + reportDate + uploadedBy)
-- `GET /api/documents` — List all documents
-- `GET /api/documents/:id` — Get document with parsed reports
-- `DELETE /api/documents/:id` — Delete document (cascades)
-
-### Chatbot
-- `POST /api/ask` — Ask a question about site data
-
-### Admin
-- `GET /api/system/status` — Check if API key is configured
-- `POST /api/admin/verify` — Verify admin PIN
-- `GET/POST /api/admin/settings` — Manage API key (PIN required)
-
-## 🔒 Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | OpenAI API key with GPT-4o access |
-| `ADMIN_PIN` | No | Override default admin PIN (default: 1234) |
-
-## 📝 License
-
-Private — Kashyap Builders & Developers
+MIT

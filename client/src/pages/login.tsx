@@ -81,16 +81,18 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <HardHat className="w-8 h-8 text-primary" />
-          </div>
+        <div className="text-center space-y-3">
+          <img
+            src="/logo.png"
+            alt="Kashyap Builders"
+            className="mx-auto w-20 h-20 rounded-2xl object-contain shadow-md border border-amber-200/30"
+          />
           <h1 className="text-2xl font-bold tracking-tight">DocQ</h1>
           <p className="text-sm text-muted-foreground">
             Construction Site Intelligence System
           </p>
-          <p className="text-xs text-muted-foreground">
-            Kashyap Builders & Developers
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            Kashyap Builders
           </p>
         </div>
 
