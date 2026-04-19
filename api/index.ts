@@ -19,6 +19,15 @@ async function ensureInit() {
 
 // Vercel serverless handler
 export default async function handler(req: any, res: any) {
-  await ensureInit();
-  return app(req, res);
+  try {
+    await ensureInit();
+    return app(req, res);
+  } catch (error: any) {
+    console.error("Vercel API Handler Error:", error);
+    return res.status(500).json({ 
+      error: "API Cold Start Failed", 
+      details: error?.message || String(error),
+      stack: error?.stack 
+    });
+  }
 }
