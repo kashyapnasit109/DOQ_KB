@@ -4,11 +4,12 @@
   "outputDirectory": "dist/public",
   "installCommand": "npm install",
   "functions": {
-    "api/index.ts": {
+    "api/**/*.ts": {
       "maxDuration": 60
     }
   },
   "rewrites": [
+    { "source": "/api/health", "destination": "/api/health" },
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
