@@ -19,15 +19,6 @@ async function ensureInit() {
 
 // Vercel serverless handler
 export default async function handler(req: any, res: any) {
-  try {
-    await ensureInit();
-    return app(req, res);
-  } catch (err: any) {
-    console.error("Vercel Invocation Error:", err);
-    res.status(500).json({
-      message: "Server Initialization Failed",
-      error: err?.message || String(err),
-      stack: err?.stack
-    });
-  }
+  await ensureInit();
+  return app(req, res);
 }

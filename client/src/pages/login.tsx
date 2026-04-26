@@ -84,25 +84,28 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div className="w-full max-w-[420px] space-y-8 relative z-10">
         {/* ─── Premium Logo Header ─── */}
         <div className="text-center space-y-4">
-          <div className="relative mx-auto w-full max-w-[260px]">
+          <div className="relative mx-auto w-20 h-20 rounded-2xl overflow-hidden shadow-xl border border-border/30 bg-[#0a1a14]">
             <img
-              src="/logo-text.png"
+              src="/logo-icon.jpg"
               alt="Kashyap Builders"
-              className="w-full h-auto object-contain drop-shadow-xl"
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#14d9c5]/10 to-transparent pointer-events-none" />
           </div>
 
-          <div className="space-y-1.5 pt-2">
+          <div className="space-y-1.5 pt-1">
             <h1 className="text-[26px] font-bold tracking-[-0.03em] text-foreground" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
               DocQ
             </h1>
+            <p className="text-[13px] text-muted-foreground tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>
+              Site Intelligence System
+            </p>
             <div className="flex items-center justify-center gap-2 pt-1">
-              <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#14d9c5]/40" />
-              <p className="text-[12px] text-muted-foreground tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>
-                Site Intelligence System
+              <div className="h-[1px] w-6 bg-gradient-to-r from-transparent to-[#1F6B38]/40" />
+              <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-[#1F6B38]"
+                 style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Kashyap Builders
               </p>
-              <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-[#d4a853]/40" />
+              <div className="h-[1px] w-6 bg-gradient-to-l from-transparent to-[#1F6B38]/40" />
             </div>
           </div>
         </div>

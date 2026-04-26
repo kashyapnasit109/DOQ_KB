@@ -19,12 +19,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-[220px] shrink-0 border-r border-border bg-sidebar flex flex-col">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-sidebar-border bg-gradient-to-br from-[#14d9c5]/5 to-transparent flex items-center justify-center">
-          <img
-            src="/logo-text.png"
-            alt="Kashyap Builders"
-            className="w-full max-w-[150px] h-auto object-contain drop-shadow-md"
-          />
+        <div className="px-5 py-4 border-b border-sidebar-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 shadow-md bg-[#0a1a14]">
+              <img
+                src="/logo-icon.jpg"
+                alt="Kashyap Builders"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[15px] font-bold tracking-tight block" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>DocQ</span>
+              <span className="text-[8px] font-semibold tracking-[0.15em] uppercase leading-none text-[#1F6B38]"
+                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Kashyap Builders
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}

@@ -18,44 +18,36 @@ import { eq, desc, and, like, sql } from "drizzle-orm";
 // Uses Turso (cloud) if TURSO_DATABASE_URL is set, otherwise local SQLite file.
 // On Vercel, if Turso is not configured, it uses /tmp/data.db (ephemeral) so the app works temporarily.
 
-let _client: ReturnType<typeof createClient> | null = null;
-let _db: ReturnType<typeof drizzle> | null = null;
+const isVercel = process.env.VERCEL === "1";
+const dbUrl = process.env.TURSO_DATABASE_URL
+  ? process.env.TURSO_DATABASE_URL
+  : isVercel
+  ? "file:/tmp/data.db"
+  : "file:data.db";
 
-function getDbInstance() {
-  if (!_client || !_db) {
-    const isVercel = process.env.VERCEL === "1";
-    let dbUrl = process.env.TURSO_DATABASE_URL || "";
-    
-    // Fallback if URL is missing
-    if (!dbUrl) {
-      dbUrl = isVercel ? "file:/tmp/data.db" : "file:data.db";
-    } else if (!dbUrl.startsWith("libsql://") && !dbUrl.startsWith("http://") && !dbUrl.startsWith("https://") && !dbUrl.startsWith("file:")) {
-      // Validate common mistake where user pastes raw id instead of URL
-      throw new Error(`Invalid TURSO_DATABASE_URL format: ${dbUrl}`);
-    }
+const client = createClient(
+  process.env.TURSO_DATABASE_URL
+    ? {
+        url: dbUrl,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+      }
+    : {
+        url: dbUrl,
+      }
+);
 
-    _client = createClient(
-      process.env.TURSO_AUTH_TOKEN
-        ? {
-            url: dbUrl,
-            authToken: process.env.TURSO_AUTH_TOKEN,
-          }
-        : {
-            url: dbUrl,
-          }
-    );
-    _db = drizzle(_client);
-  }
-  return { client: _client, db: _db };
-}
+export const db = drizzle(client);
+
+// ─── Schema Initialization ──────────────────────────────────────────────────
 
 let initialized = false;
 
-async function initializeDatabase(client: any) {
+async function initializeDatabase() {
   if (initialized) return;
 
-  await client.executeMultiple(`
-    CREATE TABLE IF NOT EXISTS documents (
+  // Turso HTTP client does NOT support executeMultiple — must execute each statement individually
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       page_count INTEGER NOT NULL DEFAULT 0,
@@ -67,40 +59,35 @@ async function initializeDatabase(client: any) {
       report_date TEXT,
       file_type TEXT DEFAULT 'pdf',
       uploaded_by TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS conversations (
+    )`,
+    `CREATE TABLE IF NOT EXISTS conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       question TEXT NOT NULL,
       answer TEXT NOT NULL,
       source_docs TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS settings (
+    )`,
+    `CREATE TABLE IF NOT EXISTS settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT NOT NULL UNIQUE,
       value TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS users (
+    )`,
+    `CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'engineer',
       pin TEXT,
       created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS sites (
+    )`,
+    `CREATE TABLE IF NOT EXISTS sites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
       location TEXT,
       created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS daily_reports (
+    )`,
+    `CREATE TABLE IF NOT EXISTS daily_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       document_id INTEGER NOT NULL,
       site_id INTEGER NOT NULL,
@@ -112,9 +99,8 @@ async function initializeDatabase(client: any) {
       created_at TEXT NOT NULL,
       FOREIGN KEY (document_id) REFERENCES documents(id),
       FOREIGN KEY (site_id) REFERENCES sites(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS equipment_usage (
+    )`,
+    `CREATE TABLE IF NOT EXISTS equipment_usage (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_id INTEGER NOT NULL,
       equipment TEXT NOT NULL,
@@ -122,9 +108,8 @@ async function initializeDatabase(client: any) {
       diesel_litres REAL,
       remarks TEXT,
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS material_usage (
+    )`,
+    `CREATE TABLE IF NOT EXISTS material_usage (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_id INTEGER NOT NULL,
       material TEXT NOT NULL,
@@ -133,9 +118,8 @@ async function initializeDatabase(client: any) {
       balance REAL,
       remarks TEXT,
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS labour_records (
+    )`,
+    `CREATE TABLE IF NOT EXISTS labour_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_id INTEGER NOT NULL,
       category TEXT NOT NULL,
@@ -145,9 +129,8 @@ async function initializeDatabase(client: any) {
       labour_count INTEGER,
       remarks TEXT,
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS payment_records (
+    )`,
+    `CREATE TABLE IF NOT EXISTS payment_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_id INTEGER NOT NULL,
       category TEXT NOT NULL,
@@ -157,8 +140,12 @@ async function initializeDatabase(client: any) {
       payment_date TEXT,
       remarks TEXT,
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
-    );
-  `);
+    )`,
+  ];
+
+  for (const stmt of statements) {
+    await client.execute(stmt);
+  }
 
   initialized = true;
 }
@@ -168,47 +155,38 @@ async function initializeDatabase(client: any) {
 export class DatabaseStorage {
 
   async ensureInit() {
-    if (!initialized) {
-      const { client } = getDbInstance();
-      await initializeDatabase(client);
-    }
+    if (!initialized) await initializeDatabase();
   }
 
   // ─── Users ──────────────────────────────────────────────────────────────────
 
   async createUser(user: InsertUser): Promise<User> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(users).values(user).returning().get())!;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(users).where(eq(users.username, username.toLowerCase())).get();
   }
 
   async getUser(id: number): Promise<User | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(users).where(eq(users.id, id)).get();
   }
 
   async getAllUsers(): Promise<User[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(users).orderBy(desc(users.id)).all();
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.update(users).set(updates).where(eq(users.id, id)).returning().get();
   }
 
   async deleteUser(id: number): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     await db.delete(users).where(eq(users.id, id)).run();
   }
 
@@ -216,37 +194,31 @@ export class DatabaseStorage {
 
   async createDocument(doc: InsertDocument): Promise<Document> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(documents).values(doc).returning().get())!;
   }
 
   async getDocument(id: number): Promise<Document | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(documents).where(eq(documents.id, id)).get();
   }
 
   async getAllDocuments(): Promise<Document[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(documents).orderBy(desc(documents.id)).all();
   }
 
   async getDocumentsBySite(siteId: number): Promise<Document[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(documents).where(eq(documents.siteId, siteId)).orderBy(desc(documents.id)).all();
   }
 
   async updateDocument(id: number, updates: Partial<InsertDocument>): Promise<Document | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.update(documents).set(updates).where(eq(documents.id, id)).returning().get();
   }
 
   async deleteDocument(id: number): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     const reports = await db.select().from(dailyReports).where(eq(dailyReports.documentId, id)).all();
     for (const report of reports) {
       await this.deleteDailyReportCascade(report.id);
@@ -258,25 +230,21 @@ export class DatabaseStorage {
 
   async createConversation(conv: InsertConversation): Promise<Conversation> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(conversations).values(conv).returning().get())!;
   }
 
   async getAllConversations(): Promise<Conversation[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(conversations).orderBy(desc(conversations.id)).all();
   }
 
   async deleteConversation(id: number): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     await db.delete(conversations).where(eq(conversations.id, id)).run();
   }
 
   async clearConversations(): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     await db.delete(conversations).run();
   }
 
@@ -284,14 +252,12 @@ export class DatabaseStorage {
 
   async getSetting(key: string): Promise<string | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     const row = await db.select().from(settings).where(eq(settings.key, key)).get();
     return row?.value;
   }
 
   async setSetting(key: string, value: string): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     const existing = await db.select().from(settings).where(eq(settings.key, key)).get();
     if (existing) {
       await db.update(settings).set({ value }).where(eq(settings.key, key)).run();
@@ -304,31 +270,26 @@ export class DatabaseStorage {
 
   async createSite(site: InsertSite): Promise<Site> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(sites).values(site).returning().get())!;
   }
 
   async getSite(id: number): Promise<Site | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(sites).where(eq(sites.id, id)).get();
   }
 
   async getSiteByCode(code: string): Promise<Site | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(sites).where(eq(sites.code, code.toUpperCase())).get();
   }
 
   async getAllSites(): Promise<Site[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(sites).orderBy(desc(sites.id)).all();
   }
 
   async searchSites(query: string): Promise<Site[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(sites)
       .where(
         sql`${sites.code} LIKE ${'%' + query.toUpperCase() + '%'} OR UPPER(${sites.name}) LIKE ${'%' + query.toUpperCase() + '%'}`
@@ -338,13 +299,11 @@ export class DatabaseStorage {
 
   async updateSite(id: number, updates: Partial<InsertSite>): Promise<Site | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.update(sites).set(updates).where(eq(sites.id, id)).returning().get();
   }
 
   async deleteSite(id: number): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     await db.delete(sites).where(eq(sites.id, id)).run();
   }
 
@@ -352,25 +311,21 @@ export class DatabaseStorage {
 
   async createDailyReport(report: InsertDailyReport): Promise<DailyReport> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(dailyReports).values(report).returning().get())!;
   }
 
   async getDailyReport(id: number): Promise<DailyReport | undefined> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(dailyReports).where(eq(dailyReports.id, id)).get();
   }
 
   async getDailyReportsByDocument(documentId: number): Promise<DailyReport[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(dailyReports).where(eq(dailyReports.documentId, documentId)).all();
   }
 
   async getDailyReportsBySite(siteId: number): Promise<DailyReport[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(dailyReports)
       .where(eq(dailyReports.siteId, siteId))
       .orderBy(desc(dailyReports.reportDate))
@@ -379,7 +334,6 @@ export class DatabaseStorage {
 
   async getDailyReportsBySiteAndDate(siteId: number, date: string): Promise<DailyReport[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(dailyReports)
       .where(and(eq(dailyReports.siteId, siteId), eq(dailyReports.reportDate, date)))
       .all();
@@ -387,7 +341,6 @@ export class DatabaseStorage {
 
   async getDailyReportsBySiteDateRange(siteId: number, fromDate: string, toDate: string): Promise<DailyReport[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(dailyReports)
       .where(and(
         eq(dailyReports.siteId, siteId),
@@ -400,7 +353,6 @@ export class DatabaseStorage {
 
   async deleteDailyReportCascade(reportId: number): Promise<void> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     await db.delete(equipmentUsage).where(eq(equipmentUsage.reportId, reportId)).run();
     await db.delete(materialUsage).where(eq(materialUsage.reportId, reportId)).run();
     await db.delete(labourRecords).where(eq(labourRecords.reportId, reportId)).run();
@@ -412,13 +364,11 @@ export class DatabaseStorage {
 
   async createEquipmentUsage(record: InsertEquipmentUsage): Promise<EquipmentUsage> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(equipmentUsage).values(record).returning().get())!;
   }
 
   async getEquipmentByReport(reportId: number): Promise<EquipmentUsage[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(equipmentUsage).where(eq(equipmentUsage.reportId, reportId)).all();
   }
 
@@ -426,13 +376,11 @@ export class DatabaseStorage {
 
   async createMaterialUsage(record: InsertMaterialUsage): Promise<MaterialUsage> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(materialUsage).values(record).returning().get())!;
   }
 
   async getMaterialByReport(reportId: number): Promise<MaterialUsage[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(materialUsage).where(eq(materialUsage.reportId, reportId)).all();
   }
 
@@ -440,13 +388,11 @@ export class DatabaseStorage {
 
   async createLabourRecord(record: InsertLabourRecord): Promise<LabourRecord> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(labourRecords).values(record).returning().get())!;
   }
 
   async getLabourByReport(reportId: number): Promise<LabourRecord[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(labourRecords).where(eq(labourRecords.reportId, reportId)).all();
   }
 
@@ -454,13 +400,11 @@ export class DatabaseStorage {
 
   async createPaymentRecord(record: InsertPaymentRecord): Promise<PaymentRecord> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return (await db.insert(paymentRecords).values(record).returning().get())!;
   }
 
   async getPaymentsByReport(reportId: number): Promise<PaymentRecord[]> {
     await this.ensureInit();
-    const { db } = getDbInstance();
     return await db.select().from(paymentRecords).where(eq(paymentRecords.reportId, reportId)).all();
   }
 
@@ -468,7 +412,6 @@ export class DatabaseStorage {
 
   async getSiteSummary(siteId: number) {
     await this.ensureInit();
-    const { db } = getDbInstance();
     const reportCount = await db.select({ count: sql<number>`count(*)` })
       .from(dailyReports).where(eq(dailyReports.siteId, siteId)).get();
 
@@ -501,7 +444,6 @@ export class DatabaseStorage {
 
     for (const report of reports) {
       try {
-        const { db } = getDbInstance();
         const data = JSON.parse(report.structuredData || "{}");
         context += `--- Date: ${report.reportDate}, Reported by: ${report.reportedBy || 'N/A'} ---\n`;
         context += JSON.stringify(data, null, 2) + "\n\n";
