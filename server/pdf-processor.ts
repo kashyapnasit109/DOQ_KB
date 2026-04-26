@@ -231,13 +231,14 @@ export async function fileToBase64Images(filePath: string, mimeType: string): Pr
 
 /**
  * Convert PDF buffer to array of base64 PNG images (one per page)
- * Uses pdfjs-dist with canvas rendering
+ * Uses pdfjs-dist with canvas rendering locally.
+ * On Vercel (no canvas), returns the raw PDF for direct GPT-4o file input.
  */
 async function pdfToImages(pdfBuffer: Buffer): Promise<Array<{ base64: string; mime: string }>> {
   const images: Array<{ base64: string; mime: string }> = [];
 
   try {
-    // Try using @napi-rs/canvas for PDF rendering
+    // Try using @napi-rs/canvas for PDF rendering (works locally)
     const { createCanvas } = await import("@napi-rs/canvas");
     const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
@@ -266,46 +267,15 @@ async function pdfToImages(pdfBuffer: Buffer): Promise<Array<{ base64: string; m
     return images;
   } catch (canvasError: any) {
     console.warn("Canvas-based PDF rendering failed:", canvasError.message);
-    console.log("Falling back to text extraction from PDF...");
+    console.log("Using GPT-4o native PDF file input (no image conversion needed)...");
 
-    // Fallback: extract text from PDF using pdfjs-dist (works without canvas)
-    try {
-      const extractedText = await extractTextFromPdf(pdfBuffer);
-      if (extractedText && extractedText.trim().length > 50) {
-        console.log(`[PDF Processor] Extracted ${extractedText.length} chars of text from PDF`);
-        // Return text as a special marker — the Vision API caller will handle this
-        return [{
-          base64: Buffer.from(extractedText, "utf-8").toString("base64"),
-          mime: "text/plain"
-        }];
-      }
-    } catch (textError: any) {
-      console.warn("Text extraction also failed:", textError.message);
-    }
-
-    // Final fallback: create a placeholder indicating manual processing needed
-    throw new Error("PDF processing failed: Canvas rendering and text extraction both unavailable. Please upload images (JPEG/PNG) of the report pages instead.");
+    // Fallback: return the raw PDF — extractWithVisionAPI will send it via
+    // OpenAI's native file input format (type: "file") which handles PDFs directly
+    return [{
+      base64: pdfBuffer.toString("base64"),
+      mime: "application/pdf"
+    }];
   }
-}
-
-/**
- * Extract text content from a PDF using pdfjs-dist (no canvas required)
- */
-async function extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
-  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const pdf = await getDocument({ data: new Uint8Array(pdfBuffer) }).promise;
-  
-  let fullText = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => item.str)
-      .join(" ");
-    fullText += `\n--- Page ${i} ---\n${pageText}\n`;
-  }
-  
-  return fullText;
 }
 
 /**
@@ -317,22 +287,26 @@ export async function extractWithVisionAPI(
   additionalContext?: string
 ): Promise<ParsedReport> {
 
-  // Check if we have extracted text (fallback mode) instead of images
-  const hasTextOnly = images.length === 1 && images[0].mime === "text/plain";
+  // Check if we have a raw PDF (Vercel fallback) or actual images
+  const hasPdf = images.length === 1 && images[0].mime === "application/pdf";
 
   const userContent: any[] = [
     { type: "text", text: EXTRACTION_PROMPT },
   ];
 
-  if (hasTextOnly) {
-    // Text extraction fallback — send extracted text as a text message
-    const extractedText = Buffer.from(images[0].base64, "base64").toString("utf-8");
+  if (hasPdf) {
+    // PDF mode — use OpenAI's native file input format for PDFs
+    // GPT-4o supports PDF files directly via the "file" content type
+    console.log("[Vision API] Sending PDF directly via file input format");
     userContent.push({
-      type: "text",
-      text: `\n\nHere is the extracted text from the PDF report:\n\n${extractedText}`
+      type: "file",
+      file: {
+        filename: "daily_report.pdf",
+        file_data: `data:application/pdf;base64,${images[0].base64}`
+      }
     });
   } else {
-    // Normal mode — send images to Vision API
+    // Image mode — send as image_url (works for PNG/JPEG from canvas rendering or direct uploads)
     const imageContent = images.map(img => ({
       type: "image_url" as const,
       image_url: {
