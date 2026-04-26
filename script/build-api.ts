@@ -21,8 +21,8 @@ async function buildApi() {
       "drizzle-orm",
       "drizzle-orm/libsql",
       "openai",
-      "pdfjs-dist",
-      "@napi-rs/canvas",
+      // pdfjs-dist is intentionally NOT external — must be bundled for PDF text extraction on Vercel
+      "@napi-rs/canvas", // Native module — will gracefully fail via try/catch
       "dotenv",
       "dotenv/config",
     ],
