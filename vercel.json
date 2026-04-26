@@ -4,7 +4,7 @@
   "outputDirectory": "dist/public",
   "installCommand": "npm install",
   "functions": {
-    "api/index.mjs": {
+    "api/index.js": {
       "maxDuration": 60
     },
     "api/health.ts": {

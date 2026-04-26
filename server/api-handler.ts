@@ -1,8 +1,8 @@
 // @ts-nocheck
-// Vercel Serverless Function Entry Point
+// Vercel Serverless Function Entry Point (source — bundled by script/build-api.ts)
 import express from "express";
 import { createServer } from "http";
-import { registerRoutes } from "../server/routes.js";
+import { registerRoutes } from "../server/routes";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -20,10 +20,10 @@ async function ensureInit() {
   try {
     await registerRoutes(httpServer, app);
     initialized = true;
-    console.log("[api/index] Routes registered successfully");
+    console.log("[api] Routes registered successfully");
   } catch (err: any) {
     initError = err;
-    console.error("[api/index] Init failed:", err.message, err.stack);
+    console.error("[api] Init failed:", err.message, err.stack);
     throw err;
   }
 }
@@ -32,7 +32,7 @@ export default async function handler(req: any, res: any) {
   try {
     await ensureInit();
   } catch (err: any) {
-    console.error("[api/index] Handler init error:", err.message);
+    console.error("[api] Handler init error:", err.message);
     return res.status(500).json({
       error: "Server initialization failed",
       detail: err.message,
