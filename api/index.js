@@ -4495,8 +4495,8 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_id INTEGER NOT NULL,
       equipment TEXT NOT NULL,
-      hours_worked REAL,
-      diesel_litres REAL,
+      working_hours REAL,
+      diesel_used TEXT,
       remarks TEXT,
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
     )`,
@@ -4533,6 +4533,16 @@ async function initializeDatabase() {
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
     )`
   ];
+  const migrations = [
+    `DROP TABLE IF EXISTS equipment_usage`
+  ];
+  for (const stmt of migrations) {
+    try {
+      await client.execute(stmt);
+    } catch (e) {
+      console.warn("Migration warn:", e.message);
+    }
+  }
   for (const stmt of statements) {
     await client.execute(stmt);
   }
