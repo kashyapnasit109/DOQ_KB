@@ -1,17 +1,19 @@
 {
   "version": 2,
-  "buildCommand": "npx vite build",
+  "buildCommand": "npx tsx script/build-api.ts && npx vite build",
   "outputDirectory": "dist/public",
   "installCommand": "npm install",
   "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 60,
-      "includeFiles": "server/**,shared/**"
+    "api/index.mjs": {
+      "maxDuration": 60
+    },
+    "api/health.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
     { "source": "/api/health", "destination": "/api/health" },
-    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
