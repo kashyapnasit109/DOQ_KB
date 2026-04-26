@@ -4929,25 +4929,62 @@ async function pdfToImages(pdfBuffer) {
     return images;
   } catch (canvasError) {
     console.warn("Canvas-based PDF rendering failed:", canvasError.message);
-    console.log("Falling back to sending PDF as-is to Vision API...");
-    return [{
-      base64: pdfBuffer.toString("base64"),
-      mime: "application/pdf"
-    }];
+    console.log("Falling back to text extraction from PDF...");
+    try {
+      const extractedText = await extractTextFromPdf(pdfBuffer);
+      if (extractedText && extractedText.trim().length > 50) {
+        console.log(`[PDF Processor] Extracted ${extractedText.length} chars of text from PDF`);
+        return [{
+          base64: Buffer.from(extractedText, "utf-8").toString("base64"),
+          mime: "text/plain"
+        }];
+      }
+    } catch (textError) {
+      console.warn("Text extraction also failed:", textError.message);
+    }
+    throw new Error("PDF processing failed: Canvas rendering and text extraction both unavailable. Please upload images (JPEG/PNG) of the report pages instead.");
   }
 }
+async function extractTextFromPdf(pdfBuffer) {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdf = await getDocument({ data: new Uint8Array(pdfBuffer) }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map((item) => item.str).join(" ");
+    fullText += `
+--- Page ${i} ---
+${pageText}
+`;
+  }
+  return fullText;
+}
 async function extractWithVisionAPI(images, apiKey, additionalContext) {
-  const imageContent = images.map((img) => ({
-    type: "image_url",
-    image_url: {
-      url: `data:${img.mime};base64,${img.base64}`,
-      detail: "high"
-    }
-  }));
+  const hasTextOnly = images.length === 1 && images[0].mime === "text/plain";
   const userContent = [
-    { type: "text", text: EXTRACTION_PROMPT },
-    ...imageContent
+    { type: "text", text: EXTRACTION_PROMPT }
   ];
+  if (hasTextOnly) {
+    const extractedText = Buffer.from(images[0].base64, "base64").toString("utf-8");
+    userContent.push({
+      type: "text",
+      text: `
+
+Here is the extracted text from the PDF report:
+
+${extractedText}`
+    });
+  } else {
+    const imageContent = images.map((img) => ({
+      type: "image_url",
+      image_url: {
+        url: `data:${img.mime};base64,${img.base64}`,
+        detail: "high"
+      }
+    }));
+    userContent.push(...imageContent);
+  }
   if (additionalContext) {
     userContent.push({
       type: "text",

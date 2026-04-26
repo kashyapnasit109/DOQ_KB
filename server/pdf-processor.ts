@@ -266,15 +266,46 @@ async function pdfToImages(pdfBuffer: Buffer): Promise<Array<{ base64: string; m
     return images;
   } catch (canvasError: any) {
     console.warn("Canvas-based PDF rendering failed:", canvasError.message);
-    console.log("Falling back to sending PDF as-is to Vision API...");
+    console.log("Falling back to text extraction from PDF...");
 
-    // Fallback: send the raw PDF as base64 (GPT-4o may accept it)
-    // Some newer API versions support PDF input directly
-    return [{
-      base64: pdfBuffer.toString("base64"),
-      mime: "application/pdf"
-    }];
+    // Fallback: extract text from PDF using pdfjs-dist (works without canvas)
+    try {
+      const extractedText = await extractTextFromPdf(pdfBuffer);
+      if (extractedText && extractedText.trim().length > 50) {
+        console.log(`[PDF Processor] Extracted ${extractedText.length} chars of text from PDF`);
+        // Return text as a special marker — the Vision API caller will handle this
+        return [{
+          base64: Buffer.from(extractedText, "utf-8").toString("base64"),
+          mime: "text/plain"
+        }];
+      }
+    } catch (textError: any) {
+      console.warn("Text extraction also failed:", textError.message);
+    }
+
+    // Final fallback: create a placeholder indicating manual processing needed
+    throw new Error("PDF processing failed: Canvas rendering and text extraction both unavailable. Please upload images (JPEG/PNG) of the report pages instead.");
   }
+}
+
+/**
+ * Extract text content from a PDF using pdfjs-dist (no canvas required)
+ */
+async function extractTextFromPdf(pdfBuffer: Buffer): Promise<string> {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdf = await getDocument({ data: new Uint8Array(pdfBuffer) }).promise;
+  
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => item.str)
+      .join(" ");
+    fullText += `\n--- Page ${i} ---\n${pageText}\n`;
+  }
+  
+  return fullText;
 }
 
 /**
@@ -285,18 +316,32 @@ export async function extractWithVisionAPI(
   apiKey: string,
   additionalContext?: string
 ): Promise<ParsedReport> {
-  const imageContent = images.map(img => ({
-    type: "image_url" as const,
-    image_url: {
-      url: `data:${img.mime};base64,${img.base64}`,
-      detail: "high" as const
-    }
-  }));
+
+  // Check if we have extracted text (fallback mode) instead of images
+  const hasTextOnly = images.length === 1 && images[0].mime === "text/plain";
 
   const userContent: any[] = [
     { type: "text", text: EXTRACTION_PROMPT },
-    ...imageContent,
   ];
+
+  if (hasTextOnly) {
+    // Text extraction fallback — send extracted text as a text message
+    const extractedText = Buffer.from(images[0].base64, "base64").toString("utf-8");
+    userContent.push({
+      type: "text",
+      text: `\n\nHere is the extracted text from the PDF report:\n\n${extractedText}`
+    });
+  } else {
+    // Normal mode — send images to Vision API
+    const imageContent = images.map(img => ({
+      type: "image_url" as const,
+      image_url: {
+        url: `data:${img.mime};base64,${img.base64}`,
+        detail: "high" as const
+      }
+    }));
+    userContent.push(...imageContent);
+  }
 
   if (additionalContext) {
     userContent.push({
