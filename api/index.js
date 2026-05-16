@@ -4484,8 +4484,7 @@ async function initializeDatabase() {
       site_id INTEGER NOT NULL,
       report_date TEXT NOT NULL,
       raw_extraction TEXT,
-      structured_data TEXT,
-      summary TEXT,
+      structured_data TEXT NOT NULL,
       reported_by TEXT,
       created_at TEXT NOT NULL,
       FOREIGN KEY (document_id) REFERENCES documents(id),
@@ -4514,10 +4513,11 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_id INTEGER NOT NULL,
       category TEXT NOT NULL,
-      description TEXT,
-      mistri_count INTEGER,
-      helper_count INTEGER,
-      labour_count INTEGER,
+      work_description TEXT,
+      location TEXT,
+      mistri_count INTEGER DEFAULT 0,
+      helper_count INTEGER DEFAULT 0,
+      total_labour INTEGER DEFAULT 0,
       remarks TEXT,
       FOREIGN KEY (report_id) REFERENCES daily_reports(id)
     )`,
@@ -4534,7 +4534,11 @@ async function initializeDatabase() {
     )`
   ];
   const migrations = [
-    `DROP TABLE IF EXISTS equipment_usage`
+    `DROP TABLE IF EXISTS equipment_usage`,
+    `DROP TABLE IF EXISTS material_usage`,
+    `DROP TABLE IF EXISTS labour_records`,
+    `DROP TABLE IF EXISTS payment_records`,
+    `DROP TABLE IF EXISTS daily_reports`
   ];
   for (const stmt of migrations) {
     try {

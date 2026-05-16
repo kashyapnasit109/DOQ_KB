@@ -69,7 +69,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="text-sm font-semibold">OpenAI API Key</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Required for AI-powered document Q&A. Uses gpt-4o-mini.
+                  Universal key for all team members. Set once, used by everyone.
                 </p>
               </div>
             </div>
